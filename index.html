@@ -237,7 +237,50 @@ h1 { font-size: 23px; margin: 0; }
     <button class="primary" id="newTaskTop">＋ Новая задача</button>
   </header>
 
+<section id="ideasPage" class="panel" style="display:none; margin-bottom:20px;">
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+    <div>
+      <h2>💡 Мои идеи</h2>
+      <p class="subtitle">Записывай мысли, сохраняй вдохновение.</p>
+    </div>
+    <button class="primary" id="addIdeaButton">＋ Новая идея</button>
+  </div>
+
+  <div id="ideasList" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px; margin-top:20px;"></div>
+
+  <div id="ideaEditor" style="display:none; margin-top:20px; padding:16px; border:1px solid var(--line); border-radius:14px;">
+    <h3 id="ideaEditorTitle">Новая идея</h3>
+    <input id="ideaTitle" placeholder="Название идеи" style="width:100%; padding:12px; margin-bottom:10px;">
+    <textarea id="ideaText" placeholder="Запиши свою идею..." rows="5" style="width:100%; padding:12px; resize:vertical;"></textarea>
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;">
+      <label class="primary" style="display:inline-flex; align-items:center; cursor:pointer;">
+        🖼️ Добавить фото
+        <input id="ideaImageInput" type="file" accept="image/*" multiple hidden>
+      </label>
+      <button type="button" id="drawIdeaButton">✏️ Рисовать</button>
+    </div>
+
+    <div id="ideaImagesPreview" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:12px;"></div>
+
+    <div id="ideaDrawingArea" style="display:none; margin-top:12px;">
+      <p class="subtitle">Рисуй пальцем или мышкой.</p>
+      <canvas id="ideaCanvas" width="700" height="350" style="width:100%; border:1px solid var(--line); border-radius:10px; touch-action:none; background:white;"></canvas>
+      <div style="display:flex; gap:10px; margin-top:8px;">
+        <button type="button" id="clearIdeaDrawing">Очистить рисунок</button>
+        <button type="button" id="saveIdeaDrawing">Сохранить рисунок</button>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;">
+      <button class="primary" id="saveIdeaButton">Сохранить идею</button>
+      <button type="button" id="cancelIdeaButton">Отмена</button>
+    </div>
+  </div>
+</section>
+
   <main class="layout">
+    
     <section class="panel">
       <div class="cal-head">
         <div class="month-title" id="monthTitle"></div>
@@ -457,6 +500,297 @@ function renderTasks() {
 }
 function renderAll() { renderCalendar(); renderTasks(); }
   
+let ideas = [];
+let editingIdeaId = null;
+let ideaImages = [];
+
+try {
+  ideas = JSON.parse(localStorage.getItem('daybook_ideas') || '[]');
+  if (!Array.isArray(ideas)) ideas = [];
+} catch {
+  ideas = [];
+}
+
+function saveIdeas() {
+  try {
+    localStorage.setItem('daybook_ideas', JSON.stringify(ideas));
+    return true;
+  } catch {
+    toast('Недостаточно места. Удали большие фотографии и попробуй снова.');
+    return false;
+  }
+}
+
+function showPage(page) {
+  const isIdeas = page === 'ideas';
+  $('ideasPage').style.display = isIdeas ? 'block' : 'none';
+  document.querySelector('.layout').style.display = isIdeas ? 'none' : 'grid';
+  $('newTaskTop').style.display = isIdeas ? 'none' : '';
+  if (isIdeas) renderIdeas();
+}
+
+function renderIdeas() {
+  const root = $('ideasList');
+  root.replaceChildren();
+
+  if (!ideas.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.textContent = 'Пока идей нет. Нажми «Новая идея», чтобы добавить первую.';
+    root.appendChild(empty);
+    return;
+  }
+
+  ideas.forEach(idea => {
+    const card = document.createElement('article');
+    card.style.cssText = 'border:1px solid var(--line);border-radius:13px;padding:14px;min-width:0;';
+
+    const title = document.createElement('h3');
+    title.textContent = idea.title || 'Без названия';
+
+    const body = document.createElement('p');
+    body.style.cssText = 'white-space:pre-wrap;overflow-wrap:anywhere;';
+    body.textContent = idea.text || '';
+
+    card.append(title, body);
+
+    (idea.images || []).forEach(src => {
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = 'Изображение идеи';
+      img.style.cssText = 'width:100%;max-height:240px;object-fit:contain;border-radius:9px;margin-top:8px;';
+      card.appendChild(img);
+    });
+
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display:flex;gap:8px;margin-top:12px;';
+
+    const edit = document.createElement('button');
+    edit.type = 'button';
+    edit.textContent = '✏️ Изменить';
+    edit.addEventListener('click', () => openIdeaEditor(idea.id));
+
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.textContent = '🗑️ Удалить';
+    del.addEventListener('click', () => {
+      if (confirm('Удалить эту идею?')) {
+        ideas = ideas.filter(item => item.id !== idea.id);
+        if (saveIdeas()) {
+          renderIdeas();
+          toast('Идея удалена');
+        }
+      }
+    });
+
+    actions.append(edit, del);
+    card.appendChild(actions);
+    root.appendChild(card);
+  });
+}
+
+function openIdeaEditor(id = null) {
+  editingIdeaId = id;
+  const idea = id ? ideas.find(item => item.id === id) : null;
+
+  $('ideaEditorTitle').textContent = idea ? 'Изменить идею' : 'Новая идея';
+  $('ideaTitle').value = idea?.title || '';
+  $('ideaText').value = idea?.text || '';
+  ideaImages = [...(idea?.images || [])];
+  $('ideaImageInput').value = '';
+  $('ideaDrawingArea').style.display = 'none';
+  renderIdeaImages();
+  $('ideaEditor').style.display = 'block';
+  $('ideaTitle').focus();
+}
+
+function renderIdeaImages() {
+  const root = $('ideaImagesPreview');
+  root.replaceChildren();
+
+  ideaImages.forEach((src, index) => {
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'width:100px;';
+
+    const img = document.createElement('img');
+    img.src = src;
+    img.alt = 'Фото идеи';
+    img.style.cssText = 'width:100px;height:90px;object-fit:cover;border-radius:8px;';
+
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.textContent = 'Удалить';
+    remove.addEventListener('click', () => {
+      ideaImages.splice(index, 1);
+      renderIdeaImages();
+    });
+
+    wrap.append(img, remove);
+    root.appendChild(wrap);
+  });
+}
+
+$('addIdeaButton').addEventListener('click', () => openIdeaEditor());
+
+$('cancelIdeaButton').addEventListener('click', () => {
+  $('ideaEditor').style.display = 'none';
+  editingIdeaId = null;
+  ideaImages = [];
+});
+
+$('ideaImageInput').addEventListener('change', async event => {
+  const files = Array.from(event.target.files || []);
+  for (const file of files) {
+    if (!file.type.startsWith('image/')) continue;
+    if (file.size > 12 * 1024 * 1024) {
+      toast('Фото слишком большое. Выбери файл меньше 12 МБ.');
+      continue;
+    }
+
+    try {
+      const data = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const image = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = data;
+      });
+
+      const scale = Math.min(1, 1000 / Math.max(image.width, image.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(image.width * scale));
+      canvas.height = Math.max(1, Math.round(image.height * scale));
+
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+      ideaImages.push(canvas.toDataURL('image/jpeg', 0.75));
+    } catch {
+      toast('Не удалось загрузить одно из фото');
+    }
+  }
+
+  renderIdeaImages();
+  event.target.value = '';
+});
+
+$('saveIdeaButton').addEventListener('click', () => {
+  const title = $('ideaTitle').value.trim();
+  const text = $('ideaText').value.trim();
+
+  if (!title && !text && !ideaImages.length) {
+    toast('Добавь название, текст или фотографию');
+    return;
+  }
+
+  const previous = editingIdeaId
+    ? ideas.find(item => item.id === editingIdeaId)
+    : null;
+
+  const idea = {
+    id: editingIdeaId || (Date.now().toString() + Math.random()),
+    title,
+    text,
+    images: [...ideaImages],
+    createdAt: previous?.createdAt || new Date().toISOString()
+  };
+
+  const oldIdeas = [...ideas];
+
+  if (editingIdeaId) {
+    ideas = ideas.map(item => item.id === editingIdeaId ? idea : item);
+  } else {
+    ideas.unshift(idea);
+  }
+
+  if (!saveIdeas()) {
+    ideas = oldIdeas;
+    return;
+  }
+
+  $('ideaEditor').style.display = 'none';
+  editingIdeaId = null;
+  ideaImages = [];
+  renderIdeas();
+  toast('Идея сохранена');
+});
+
+// Рисование пальцем или мышкой
+const ideaCanvas = $('ideaCanvas');
+const ideaCtx = ideaCanvas.getContext('2d');
+let drawing = false;
+
+ideaCtx.lineWidth = 3;
+ideaCtx.lineCap = 'round';
+ideaCtx.lineJoin = 'round';
+ideaCtx.strokeStyle = '#182033';
+
+ideaCanvas.addEventListener('pointerdown', event => {
+  drawing = true;
+  ideaCanvas.setPointerCapture(event.pointerId);
+  const rect = ideaCanvas.getBoundingClientRect();
+  ideaCtx.beginPath();
+  ideaCtx.moveTo(
+    (event.clientX - rect.left) * ideaCanvas.width / rect.width,
+    (event.clientY - rect.top) * ideaCanvas.height / rect.height
+  );
+});
+
+ideaCanvas.addEventListener('pointermove', event => {
+  if (!drawing) return;
+  const rect = ideaCanvas.getBoundingClientRect();
+  ideaCtx.lineTo(
+    (event.clientX - rect.left) * ideaCanvas.width / rect.width,
+    (event.clientY - rect.top) * ideaCanvas.height / rect.height
+  );
+  ideaCtx.stroke();
+});
+
+function stopIdeaDrawing() {
+  drawing = false;
+  ideaCtx.beginPath();
+}
+
+ideaCanvas.addEventListener('pointerup', stopIdeaDrawing);
+ideaCanvas.addEventListener('pointercancel', stopIdeaDrawing);
+
+$('drawIdeaButton').addEventListener('click', () => {
+  $('ideaDrawingArea').style.display = 'block';
+});
+
+$('clearIdeaDrawing').addEventListener('click', () => {
+  ideaCtx.clearRect(0, 0, ideaCanvas.width, ideaCanvas.height);
+});
+
+$('saveIdeaDrawing').addEventListener('click', () => {
+  const pixels = ideaCtx.getImageData(0, 0, ideaCanvas.width, ideaCanvas.height).data;
+  let hasDrawing = false;
+
+  for (let i = 3; i < pixels.length; i += 4) {
+    if (pixels[i] !== 0) {
+      hasDrawing = true;
+      break;
+    }
+  }
+
+  if (!hasDrawing) {
+    toast('Сначала нарисуй что-нибудь');
+    return;
+  }
+
+  ideaImages.push(ideaCanvas.toDataURL('image/png'));
+  renderIdeaImages();
+  ideaCtx.clearRect(0, 0, ideaCanvas.width, ideaCanvas.height);
+  $('ideaDrawingArea').style.display = 'none';
+  toast('Рисунок добавлен к идее');
+});
+
+  
 $('menuButton').addEventListener('click', () => {
   $('sideMenu').classList.toggle('open');
 });
@@ -468,10 +802,17 @@ document.addEventListener('click', (e) => {
   }
 });
 
+
 $('homePageButton').addEventListener('click', () => {
   $('sideMenu').classList.remove('open');
-  toast('Ты на главной странице');
+  showPage('home');
 });
+
+$('ideasPageButton').addEventListener('click', () => {
+  $('sideMenu').classList.remove('open');
+  showPage('ideas');
+});
+
 
 $('ideasPageButton').addEventListener('click', () => {
   $('sideMenu').classList.remove('open');
