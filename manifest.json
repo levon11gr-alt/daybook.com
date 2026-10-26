@@ -1,0 +1,12 @@
+
+{
+  "name": "Daybook — Календарь и задачи",
+  "short_name": "Daybook",
+  "description": "Личный календарь, задачи и напоминания",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f8faff",
+  "theme_color": "#2563eb",
+  "icons": []
+}
