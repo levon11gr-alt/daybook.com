@@ -246,7 +246,11 @@ h1 { font-size: 23px; margin: 0; }
     <button class="primary" id="addIdeaButton">＋ Новая идея</button>
   </div>
 
-  <div id="ideasList" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px; margin-top:20px;"></div>
+ 
+<input id="ideasSearch" type="search" placeholder="🔎 Поиск по идеям..." style="width:100%;box-sizing:border-box;padding:13px;margin-top:18px;border:1px solid var(--line);border-radius:12px;">
+
+<div id="ideasList" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;margin-top:16px;"></div>
+
 
   <div id="ideaEditor" style="display:none; margin-top:20px; padding:16px; border:1px solid var(--line); border-radius:14px;">
     <h3 id="ideaEditorTitle">Новая идея</h3>
@@ -545,7 +549,103 @@ function showPage(page) {
   if (isIdeas) renderIdeas();
 }
 
+
 function renderIdeas() {
+  const root = $('ideasList');
+  root.replaceChildren();
+
+  const query = ($('ideasSearch')?.value || '').trim().toLowerCase();
+
+  const filteredIdeas = ideas.filter(idea =>
+    (idea.title || '').toLowerCase().includes(query) ||
+    (idea.text || '').toLowerCase().includes(query)
+  );
+
+  if (!filteredIdeas.length) {
+    const empty = document.createElement('div');
+    empty.className = 'empty';
+    empty.style.cssText = 'grid-column:1/-1;padding:28px;text-align:center;';
+    empty.textContent = query
+      ? 'Ничего не найдено. Попробуй другой запрос.'
+      : '💡 Пока идей нет. Нажми «Новая идея», чтобы создать первую.';
+    root.appendChild(empty);
+    return;
+  }
+
+  filteredIdeas.forEach(idea => {
+    const card = document.createElement('article');
+    card.style.cssText = `
+      min-width:0;
+      padding:16px;
+      border:1px solid var(--line);
+      border-radius:16px;
+      background:var(--card, white);
+      box-shadow:0 4px 16px rgba(25,40,80,.05);
+      overflow-wrap:anywhere;
+    `;
+
+    const title = document.createElement('h3');
+    title.textContent = idea.title || 'Без названия';
+    title.style.cssText = 'margin:0 0 8px;font-size:18px;';
+
+    const date = document.createElement('div');
+    date.textContent = idea.createdAt
+      ? new Date(idea.createdAt).toLocaleDateString('ru-RU', {
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        })
+      : '';
+    date.style.cssText = 'font-size:12px;opacity:.65;margin-bottom:12px;';
+
+    const body = document.createElement('p');
+    body.textContent = idea.text || '';
+    body.style.cssText = 'white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;margin:0 0 10px;';
+
+    card.append(title, date, body);
+
+    (idea.images || []).forEach(src => {
+      const img = document.createElement('img');
+      img.src = src;
+      img.alt = 'Изображение идеи';
+      img.loading = 'lazy';
+      img.style.cssText = 'width:100%;max-height:240px;object-fit:contain;border-radius:10px;margin-top:8px;background:#f4f6fa;';
+      card.appendChild(img);
+    });
+
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;';
+
+    const edit = document.createElement('button');
+    edit.type = 'button';
+    edit.textContent = '✏️ Изменить';
+    edit.addEventListener('click', () => openIdeaEditor(idea.id));
+
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.textContent = '🗑️ Удалить';
+    del.addEventListener('click', () => {
+      if (confirm('Удалить эту идею?')) {
+        const oldIdeas = [...ideas];
+        ideas = ideas.filter(item => item.id !== idea.id);
+
+        if (saveIdeas()) {
+          renderIdeas();
+          toast('Идея удалена');
+        } else {
+          ideas = oldIdeas;
+        }
+      }
+    });
+
+    actions.append(edit, del);
+    card.appendChild(actions);
+    root.appendChild(card);
+  });
+}
+
+$('ideasSearch').addEventListener('input', renderIdeas);
+
   const root = $('ideasList');
   root.replaceChildren();
 
