@@ -646,64 +646,6 @@ function renderIdeas() {
 
 $('ideasSearch').addEventListener('input', renderIdeas);
 
-  const root = $('ideasList');
-  root.replaceChildren();
-
-  if (!ideas.length) {
-    const empty = document.createElement('div');
-    empty.className = 'empty';
-    empty.textContent = 'Пока идей нет. Нажми «Новая идея», чтобы добавить первую.';
-    root.appendChild(empty);
-    return;
-  }
-
-  ideas.forEach(idea => {
-    const card = document.createElement('article');
-    card.style.cssText = 'border:1px solid var(--line);border-radius:13px;padding:14px;min-width:0;';
-
-    const title = document.createElement('h3');
-    title.textContent = idea.title || 'Без названия';
-
-    const body = document.createElement('p');
-    body.style.cssText = 'white-space:pre-wrap;overflow-wrap:anywhere;';
-    body.textContent = idea.text || '';
-
-    card.append(title, body);
-
-    (idea.images || []).forEach(src => {
-      const img = document.createElement('img');
-      img.src = src;
-      img.alt = 'Изображение идеи';
-      img.style.cssText = 'width:100%;max-height:240px;object-fit:contain;border-radius:9px;margin-top:8px;';
-      card.appendChild(img);
-    });
-
-    const actions = document.createElement('div');
-    actions.style.cssText = 'display:flex;gap:8px;margin-top:12px;';
-
-    const edit = document.createElement('button');
-    edit.type = 'button';
-    edit.textContent = '✏️ Изменить';
-    edit.addEventListener('click', () => openIdeaEditor(idea.id));
-
-    const del = document.createElement('button');
-    del.type = 'button';
-    del.textContent = '🗑️ Удалить';
-    del.addEventListener('click', () => {
-      if (confirm('Удалить эту идею?')) {
-        ideas = ideas.filter(item => item.id !== idea.id);
-        if (saveIdeas()) {
-          renderIdeas();
-          toast('Идея удалена');
-        }
-      }
-    });
-
-    actions.append(edit, del);
-    card.appendChild(actions);
-    root.appendChild(card);
-  });
-}
 
 function openIdeaEditor(id = null) {
   editingIdeaId = id;
@@ -958,11 +900,6 @@ $('ideasPageButton').addEventListener('click', () => {
   showPage('ideas');
 });
 
-
-$('ideasPageButton').addEventListener('click', () => {
-  $('sideMenu').classList.remove('open');
-  toast('Страницу «Идеи» добавим следующим шагом');
-});
 
 
 function openModal(id=null) {
