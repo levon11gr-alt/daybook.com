@@ -265,6 +265,22 @@ h1 { font-size: 23px; margin: 0; }
 
     <div id="ideaDrawingArea" style="display:none; margin-top:12px;">
       <p class="subtitle">Рисуй пальцем или мышкой.</p>
+      
+<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0;">
+  <label>
+    Цвет:
+    <input id="ideaBrushColor" type="color" value="#182033" style="width:44px;height:36px;vertical-align:middle;">
+  </label>
+
+  <label style="display:flex;gap:8px;align-items:center;">
+    Толщина:
+    <input id="ideaBrushSize" type="range" min="1" max="20" value="3">
+    <span id="ideaBrushSizeValue">3</span>
+  </label>
+
+  <button type="button" id="ideaEraserButton">◻ Ластик</button>
+</div>
+
       <canvas id="ideaCanvas" width="700" height="350" style="width:100%; border:1px solid var(--line); border-radius:10px; touch-action:none; background:white;"></canvas>
       <div style="display:flex; gap:10px; margin-top:8px;">
         <button type="button" id="clearIdeaDrawing">Очистить рисунок</button>
@@ -725,10 +741,39 @@ const ideaCanvas = $('ideaCanvas');
 const ideaCtx = ideaCanvas.getContext('2d');
 let drawing = false;
 
+
 ideaCtx.lineWidth = 3;
 ideaCtx.lineCap = 'round';
 ideaCtx.lineJoin = 'round';
 ideaCtx.strokeStyle = '#182033';
+
+let ideaEraserOn = false;
+
+$('ideaBrushColor').addEventListener('input', event => {
+  ideaEraserOn = false;
+  ideaCtx.strokeStyle = event.target.value;
+  $('ideaEraserButton').textContent = '◻ Ластик';
+});
+
+$('ideaBrushSize').addEventListener('input', event => {
+  ideaCtx.lineWidth = Number(event.target.value);
+  $('ideaBrushSizeValue').textContent = event.target.value;
+});
+
+$('ideaEraserButton').addEventListener('click', () => {
+  ideaEraserOn = !ideaEraserOn;
+
+  if (ideaEraserOn) {
+    ideaCtx.strokeStyle = '#ffffff';
+    ideaCtx.lineWidth = Math.max(12, Number($('ideaBrushSize').value) * 2);
+    $('ideaEraserButton').textContent = '✏️ Вернуть кисть';
+  } else {
+    ideaCtx.strokeStyle = $('ideaBrushColor').value;
+    ideaCtx.lineWidth = Number($('ideaBrushSize').value);
+    $('ideaEraserButton').textContent = '◻ Ластик';
+  }
+});
+
 
 ideaCanvas.addEventListener('pointerdown', event => {
   drawing = true;
