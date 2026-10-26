@@ -32,6 +32,47 @@ button { cursor: pointer; }
   align-items: center; gap: 15px; margin-bottom: 25px;
 }
 .brand { display: flex; align-items: center; gap: 12px; }
+  
+.topbar { position: relative; }
+
+.menu-button {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: white;
+  color: var(--text);
+  font-size: 23px;
+}
+
+.side-menu {
+  display: none;
+  position: absolute;
+  top: 52px;
+  left: 0;
+  z-index: 20;
+  width: 190px;
+  padding: 8px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  box-shadow: 0 10px 30px #1d28501c;
+}
+
+.side-menu.open { display: flex; flex-direction: column; gap: 5px; }
+
+.side-menu button {
+  padding: 12px;
+  text-align: left;
+  border: 0;
+  border-radius: 8px;
+  background: white;
+  color: var(--text);
+}
+
+.side-menu button:hover { background: var(--accent-light); }
+
 .logo {
   background: var(--accent); color: white;
   border-radius: 13px; width: 45px; height: 45px;
@@ -180,6 +221,13 @@ h1 { font-size: 23px; margin: 0; }
 <div class="app">
   <header class="topbar">
     <div class="brand">
+      
+    <button class="menu-button" id="menuButton" type="button" aria-label="Открыть меню">☰</button>
+    <nav class="side-menu" id="sideMenu">
+      <button type="button" id="homePageButton">🏠 Главная</button>
+      <button type="button" id="ideasPageButton">💡 Идеи</button>
+    </nav>
+
       <div class="logo">D</div>
       <div>
         <h1>Daybook</h1>
@@ -408,6 +456,28 @@ function renderTasks() {
   });
 }
 function renderAll() { renderCalendar(); renderTasks(); }
+  
+$('menuButton').addEventListener('click', () => {
+  $('sideMenu').classList.toggle('open');
+});
+
+document.addEventListener('click', (e) => {
+  if (!$('sideMenu').contains(e.target) &&
+      e.target !== $('menuButton')) {
+    $('sideMenu').classList.remove('open');
+  }
+});
+
+$('homePageButton').addEventListener('click', () => {
+  $('sideMenu').classList.remove('open');
+  toast('Ты на главной странице');
+});
+
+$('ideasPageButton').addEventListener('click', () => {
+  $('sideMenu').classList.remove('open');
+  toast('Страницу «Идеи» добавим следующим шагом');
+});
+
 
 function openModal(id=null) {
   editingId = id;
